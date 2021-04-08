@@ -2,7 +2,7 @@
  Copyright (c) 2020 - for information on the respective copyright owner
  see the NOTICE file and/or the repository at
  https://github.com/hyperledger-labs/organizational-agent
- 
+
  SPDX-License-Identifier: Apache-2.0
 -->
 <template>
@@ -24,18 +24,46 @@
       >
       </v-data-table>
       <v-card-actions>
-        <v-btn
-          color="primary"
-          small
-          dark
-          absolute
-          bottom
-          left
-          fab
-          :to="{ name: 'AddSchema' }"
-        >
-          <v-icon>mdi-plus</v-icon>
-        </v-btn>
+        <v-tooltip bottom>
+          <template v-slot:activator="{on, attrs}">
+            <v-btn
+              color="secondary"
+              small
+              dark
+              absolute
+              bottom
+              left
+              fab
+              :to="{ name: 'AddSchema' }"
+              v-bind="attrs"
+              v-on="on"
+            >
+              <v-icon>mdi-import</v-icon>
+            </v-btn>
+          </template>
+          <span>Import Schema</span>
+        </v-tooltip>
+
+        <v-tooltip bottom>
+          <template v-slot:activator="{on, attrs}">
+            <v-btn
+              color="primary"
+              small
+              dark
+              absolute
+              bottom
+              left
+              fab
+              style="margin-left: 50px;"
+              :to="{ name: 'CreateSchema' }"
+              v-bind="attrs"
+              v-on="on"
+            >
+              <v-icon>mdi-plus</v-icon>
+            </v-btn>
+          </template>
+          <span>Add New Schema</span>
+        </v-tooltip>
       </v-card-actions>
     </v-card>
   </v-container>
@@ -52,6 +80,7 @@ export default {
   data: () => {
     return {
       data: [],
+      credDefs: {},
       newSchema: {
         label: "",
         schemaId: "",
@@ -67,10 +96,15 @@ export default {
           text: "Schema ID",
           value: "schemaId",
         },
+        {
+          text: "Cred Def ID",
+          value: "credDefId",
+        },
       ],
     };
   },
-  computed: {},
+  computed: {
+  },
   methods: {
     fetch() {
       this.$axios
@@ -78,12 +112,25 @@ export default {
         .then((result) => {
           console.log(result);
           if ({}.hasOwnProperty.call(result, "data")) {
-            this.isBusy = false;
-
             this.data = result.data;
-
             console.log(this.data);
           }
+        })
+        .then(() => { return this.$axios.get(`${this.$apiBaseUrl}/admin/creddef?map=true`) })
+        .then((result) => {
+          console.log(result);
+          if ({}.hasOwnProperty.call(result, "data")) {
+            this.credDefs = result.data;
+            console.log(this.data);
+          }
+          // pop the credential definition id in the data if exists.
+          this.data.forEach(d => {
+            const cdef = this.credDefs[d.schemaId];
+            if (cdef) {
+              d["credDefId"] = cdef.id;
+            }
+          });
+          this.isBusy = false;
         })
         .catch((e) => {
           this.isBusy = false;

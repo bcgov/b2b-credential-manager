@@ -62,7 +62,9 @@ backend/*/src/main/resources/3rdPartyLicenses/**
 # Frontend
 # --------------------------------------
 
-.env
+!frontend/.env
+!bcgov-frontend/.env
+.env.development.*
 
 # Ignore Node
 frontend/node/**
@@ -82,3 +84,5 @@ package-lock.json
 charts/**/charts/
 charts/**/manifests/
 my-values.yaml
+
+scripts/**/*.txn

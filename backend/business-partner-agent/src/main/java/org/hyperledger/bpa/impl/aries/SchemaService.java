@@ -18,16 +18,23 @@
 package org.hyperledger.bpa.impl.aries;
 
 import io.micronaut.cache.annotation.Cacheable;
+import io.micronaut.context.event.ApplicationEventPublisher;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.hyperledger.aries.AriesClient;
+import org.hyperledger.aries.api.creddef.CredentialDefinition;
+import org.hyperledger.aries.api.schema.SchemaSendRequest;
+import org.hyperledger.aries.api.schema.SchemaSendResponse;
 import org.hyperledger.bpa.api.aries.SchemaAPI;
 import org.hyperledger.bpa.api.exception.WrongApiUsageException;
+import org.hyperledger.bpa.client.LedgerClient;
 import org.hyperledger.bpa.config.SchemaConfig;
+import org.hyperledger.bpa.controller.api.partner.PartnerCredentialType;
 import org.hyperledger.bpa.impl.util.AriesStringUtil;
 import org.hyperledger.bpa.model.BPASchema;
 import org.hyperledger.bpa.repository.SchemaRepository;
+import org.jetbrains.annotations.NotNull;
 
 import javax.annotation.Nullable;
 import javax.inject.Inject;
@@ -38,6 +45,8 @@ import java.util.*;
 @Slf4j
 @Singleton
 public class SchemaService {
+    @Inject
+    private ApplicationEventPublisher eventPublisher;
 
     @Inject
     SchemaRepository schemaRepo;
@@ -48,11 +57,46 @@ public class SchemaService {
     @Inject
     List<SchemaConfig> schemas;
 
+    @Inject
+    LedgerClient ledgerClient;
+
     // CRUD Methods
 
     public SchemaAPI addSchema(@NonNull String schemaId, @Nullable String label,
             @Nullable String defaultAttributeName) {
         return addSchema(schemaId, label, defaultAttributeName, false);
+    }
+
+    public SchemaAPI createSchema(@NonNull String schemaName, @NonNull String schemaVersion,
+            @NonNull List<String> attributes, @NonNull String schemaLabel, String defaultAttributeName) {
+        SchemaAPI result = null;
+        // ensure no leading or trailing spaces on attribute names... bad things happen
+        // when crypto signing.
+        attributes.replaceAll(s -> getSchemaString(s));
+        try {
+            SchemaSendRequest request = SchemaSendRequest.builder()
+                    .schemaName(getSchemaString(schemaName))
+                    .schemaVersion(getSchemaString(schemaVersion))
+                    .attributes(attributes)
+                    .build();
+            Optional<SchemaSendResponse> response = ac.schemas(request);
+            if (response.isPresent()) {
+                // save it to the db...
+                SchemaSendResponse ssr = response.get();
+                result = this.addSchema(ssr.getSchemaId(), schemaLabel, defaultAttributeName);
+            } else {
+                log.error("Schema not created.");
+            }
+
+        } catch (IOException e) {
+            log.error("aca-py not reachable", e);
+        }
+        return result;
+    }
+
+    @NotNull
+    private String getSchemaString(String s) {
+        return s.trim().replaceAll("\\s+", "_");
     }
 
     SchemaAPI addSchema(@NonNull String schemaId, @Nullable String label,
@@ -67,22 +111,33 @@ public class SchemaService {
         try {
             Optional<org.hyperledger.aries.api.schema.SchemaSendResponse.Schema> ariesSchema = ac.schemasGetById(sId);
             if (ariesSchema.isPresent()) {
-                BPASchema dbS = BPASchema.builder()
-                        .label(label)
-                        .schemaId(sId)
-                        .schemaAttributeNames(new LinkedHashSet<>(ariesSchema.get().getAttrNames()))
-                        .defaultAttributeName(defaultAttributeName)
-                        .seqNo(ariesSchema.get().getSeqNo())
-                        .isReadOnly(isReadOnly)
-                        .build();
-                BPASchema saved = schemaRepo.save(dbS);
-                result = SchemaAPI.from(saved);
+                result = saveSchema(label, defaultAttributeName, isReadOnly, sId, ariesSchema.get().getAttrNames(),
+                        ariesSchema.get().getSeqNo());
             } else {
                 log.error("Schema with id: {} does not exist on the ledger, skipping.", schemaId);
             }
         } catch (IOException e) {
             log.error("aca-py not reachable", e);
         }
+        if (result != null) {
+            eventPublisher.publishEventAsync(new SchemaAddedEvent(result));
+        }
+        return result;
+    }
+
+    private SchemaAPI saveSchema(@Nullable String label, @Nullable String defaultAttributeName, boolean isReadOnly,
+            String schemaId, List<String> attributeNames, Integer seqNo) {
+        SchemaAPI result;
+        BPASchema dbS = BPASchema.builder()
+                .label(label)
+                .schemaId(schemaId)
+                .schemaAttributeNames(new LinkedHashSet<>(attributeNames))
+                .defaultAttributeName(defaultAttributeName)
+                .seqNo(seqNo)
+                .isReadOnly(isReadOnly)
+                .build();
+        BPASchema saved = schemaRepo.save(dbS);
+        result = SchemaAPI.from(saved);
         return result;
     }
 

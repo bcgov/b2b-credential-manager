@@ -2,7 +2,7 @@
  Copyright (c) 2020 - for information on the respective copyright owner
  see the NOTICE file and/or the repository at
  https://github.com/hyperledger-labs/organizational-agent
- 
+
  SPDX-License-Identifier: Apache-2.0
 */
 
@@ -26,7 +26,11 @@ import Settings from "../views/Settings.vue";
 import SchemaSettings from "../views/SchemaSettings.vue";
 import Schema from "../views/Schema.vue";
 import AddSchema from "../views/AddSchema.vue";
+import CreateSchema from "../views/CreateSchema.vue";
+import CreateCredDef from "../views/CreateCredDef.vue";
 import About from "../views/About.vue";
+import IssueCredential from "../views/IssueCredential.vue"
+import IssuedCredentialPresentation from "../views/IssuedCredentialPresentation.vue"
 
 Vue.use(VueRouter);
 
@@ -89,6 +93,12 @@ const routes = [
     props: true,
   },
   {
+    path: "/app/partners/:id/issued/:credId",
+    name: "IssuedCredentialPresentation",
+    component: IssuedCredentialPresentation,
+    props: true,
+  },
+  {
     path: "/app/partners",
     name: "Partners",
     component: Partners,
@@ -112,6 +122,12 @@ const routes = [
     props: true,
   },
   {
+    path: "/app/partners/:id/issue",
+    name: "IssueCredential",
+    component: IssueCredential,
+    props: true,
+  },
+  {
     path: "/app/partners/add",
     name: "AddPartner",
     component: AddPartner,
@@ -130,6 +146,17 @@ const routes = [
     path: "/app/schema/add",
     name: "AddSchema",
     component: AddSchema,
+  },
+  {
+    path: "/app/schema/create",
+    name: "CreateSchema",
+    component: CreateSchema,
+  },
+  {
+    path: "/app/creddef/create",
+    name: "CreateCredDef",
+    component: CreateCredDef,
+    props: true,
   },
   {
     path: "/app/schema/:id",
