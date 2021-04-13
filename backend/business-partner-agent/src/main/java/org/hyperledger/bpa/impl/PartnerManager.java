@@ -21,6 +21,7 @@ import io.micronaut.cache.annotation.CacheInvalidate;
 import io.micronaut.context.annotation.Value;
 import lombok.NonNull;
 import org.apache.commons.lang3.StringUtils;
+import org.hyperledger.aries.api.connection.ConnectionState;
 import org.hyperledger.bpa.api.PartnerAPI;
 import org.hyperledger.bpa.api.exception.PartnerException;
 import org.hyperledger.bpa.core.RegisteredWebhook.WebhookEventType;
@@ -103,7 +104,7 @@ public class PartnerManager {
                 .setLabel(connectionLabel)
                 .setAriesSupport(lookupP.getAriesSupport())
                 .setAlias(alias)
-                .setState("requested");
+                .setState(ConnectionState.REQUEST);
         Partner result = repo.save(partner); // save before creating the connection
         if (did.startsWith(ledgerPrefix) && lookupP.getAriesSupport()) {
             cm.createConnection(did, connectionLabel, alias);
@@ -131,6 +132,17 @@ public class PartnerManager {
         return result;
     }
 
+    public Optional<PartnerAPI> updatePartnerDid(@NonNull UUID id, @NonNull String did) {
+        Optional<PartnerAPI> result = Optional.empty();
+        int count = repo.updateDid(id, did);
+        if (count > 0) {
+            final Optional<Partner> dbP = repo.findById(id);
+            if (dbP.isPresent()) {
+                result = Optional.of(converter.toAPIObject(dbP.get()));
+            }
+        }
+        return result;
+    }
     /**
      * Same as add partner, with the difference that refresh only works on existing
      * partners
