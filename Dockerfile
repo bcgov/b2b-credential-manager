@@ -6,23 +6,23 @@ WORKDIR /frontend
 COPY frontend .
 RUN npm install && npm run license && npm run build
 
-# Micronaut build
-FROM docker-remote.artifacts.developer.gov.bc.ca/maven:3-amazoncorretto-15 as MAVEN
+# # Micronaut build
+# FROM docker-remote.artifacts.developer.gov.bc.ca/maven:3-amazoncorretto-15 as MAVEN
 
-WORKDIR /home/maven
+# WORKDIR /home/maven
 
-# Copy Files
-COPY backend/pom.xml backend/formatter.xml ./
-COPY backend/business-partner-agent ./business-partner-agent
-COPY backend/business-partner-agent-core ./business-partner-agent-core
-# Copy Vue App
-COPY --from=VUE /frontend/dist ./business-partner-agent/src/main/resources/public
+# # Copy Files
+# COPY backend/pom.xml backend/formatter.xml ./
+# COPY backend/business-partner-agent ./business-partner-agent
+# COPY backend/business-partner-agent-core ./business-partner-agent-core
+# # Copy Vue App
+# COPY --from=VUE /frontend/dist ./business-partner-agent/src/main/resources/public
 
-# Cache Maven Artefacts
-RUN mvn dependency:go-offline || true
+# # Cache Maven Artefacts
+# RUN mvn dependency:go-offline || true
 
-# Build .jar
-RUN mvn clean package -DskipTests=true -Dspotbugs.skip=true -Dpmd.skip=true
+# # Build .jar
+# RUN mvn clean package -DskipTests=true -Dspotbugs.skip=true -Dpmd.skip=true
 
 # # Runtime Container
 # FROM docker-remote.artifacts.developer.gov.bc.ca/library/amazoncorretto:15-alpine
