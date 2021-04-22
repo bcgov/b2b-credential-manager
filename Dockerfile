@@ -25,7 +25,7 @@ RUN mvn dependency:go-offline || true
 RUN mvn clean package -DskipTests=true -Dspotbugs.skip=true -Dpmd.skip=true
 
 # Runtime Container
-FROM docker-remote.artifacts.developer.gov.bc.ca/amazoncorretto:15-alpine
+FROM docker-remote.artifacts.developer.gov.bc.ca/library/amazoncorretto:15-alpine
 COPY --from=MAVEN /home/maven/business-partner-agent/target/business-partner-agent*SNAPSHOT.jar business-partner-agent.jar
 
 EXPOSE 8080
