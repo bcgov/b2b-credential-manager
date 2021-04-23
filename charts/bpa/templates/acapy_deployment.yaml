@@ -78,7 +78,7 @@ spec:
             httpGet:
               path: /status/live 
               port: 8031
-            initialDelaySeconds: 15
+            initialDelaySeconds: 45
             periodSeconds: 3        
           volumeMounts:
           - name: config
