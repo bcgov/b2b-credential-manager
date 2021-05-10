@@ -2,7 +2,7 @@
  Copyright (c) 2020 - for information on the respective copyright owner
  see the NOTICE file and/or the repository at
  https://github.com/hyperledger-labs/organizational-agent
- 
+
  SPDX-License-Identifier: Apache-2.0
 -->
 <template>
@@ -29,7 +29,7 @@
         </v-list-item-content>
         <v-list-item-action>
           <v-btn icon :to="{ name: 'SchemaSettings' }">
-            <v-icon color="grey">mdi-chevron-right</v-icon>
+            <v-icon color="grey">$vuetify.icons.next</v-icon>
           </v-btn>
         </v-list-item-action>
       </v-list-item>
@@ -48,7 +48,7 @@
         </v-list-item-subtitle>
         <v-list-item-action v-show="!isEditingColor">
           <v-btn icon x-small @click="isEditingColor = !isEditingColor">
-            <v-icon dark>mdi-pencil</v-icon>
+            <v-icon dark>$vuetify.icons.pencil</v-icon>
           </v-btn>
         </v-list-item-action>
       </v-list-item>

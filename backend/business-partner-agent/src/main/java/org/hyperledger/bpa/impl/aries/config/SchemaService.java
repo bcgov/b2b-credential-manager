@@ -1,37 +1,43 @@
 /*
-  Copyright (c) 2020 - for information on the respective copyright owner
-  see the NOTICE file and/or the repository at
-  https://github.com/hyperledger-labs/business-partner-agent
-
-  Licensed under the Apache License, Version 2.0 (the "License");
-  you may not use this file except in compliance with the License.
-  You may obtain a copy of the License at
-
-      http://www.apache.org/licenses/LICENSE-2.0
-
-  Unless required by applicable law or agreed to in writing, software
-  distributed under the License is distributed on an "AS IS" BASIS,
-  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-  See the License for the specific language governing permissions and
-  limitations under the License.
+ * Copyright (c) 2020-2021 - for information on the respective copyright owner
+ * see the NOTICE file and/or the repository at
+ * https://github.com/hyperledger-labs/business-partner-agent
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package org.hyperledger.bpa.impl.aries.config;
 
 import io.micronaut.cache.annotation.Cacheable;
+import io.micronaut.core.annotation.Nullable;
 import io.micronaut.core.util.CollectionUtils;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.hyperledger.aries.AriesClient;
+import org.hyperledger.aries.api.schema.SchemaSendRequest;
+import org.hyperledger.aries.api.schema.SchemaSendResponse;
 import org.hyperledger.bpa.api.aries.SchemaAPI;
+import org.hyperledger.bpa.api.exception.NetworkException;
+import org.hyperledger.bpa.api.exception.SchemaException;
 import org.hyperledger.bpa.api.exception.WrongApiUsageException;
+import org.hyperledger.bpa.config.RuntimeConfig;
 import org.hyperledger.bpa.config.SchemaConfig;
 import org.hyperledger.bpa.controller.api.admin.AddTrustedIssuerRequest;
+import org.hyperledger.bpa.impl.activity.Identity;
 import org.hyperledger.bpa.impl.util.AriesStringUtil;
 import org.hyperledger.bpa.model.BPASchema;
 import org.hyperledger.bpa.repository.BPASchemaRepository;
 
-import io.micronaut.core.annotation.Nullable;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import java.io.IOException;
@@ -53,7 +59,42 @@ public class SchemaService {
     @Inject
     List<SchemaConfig> schemas;
 
+    @Inject
+    RuntimeConfig rc;
+
+    @Inject
+    Identity id;
+
     // CRUD Methods
+    public SchemaAPI createSchema(@NonNull String schemaName, @NonNull String schemaVersion,
+            @NonNull List<String> attributes, @NonNull String schemaLabel, String defaultAttributeName) {
+        SchemaAPI result = null;
+        // ensure no leading or trailing spaces on attribute names... bad things happen
+        // when crypto signing.
+        attributes.replaceAll(s -> AriesStringUtil.schemaAttributeFormat(s));
+        try {
+            // send schema to ledger...
+            SchemaSendRequest request = SchemaSendRequest.builder()
+                    .schemaName(AriesStringUtil.schemaAttributeFormat(schemaName))
+                    .schemaVersion(schemaVersion)
+                    .attributes(attributes)
+                    .build();
+            Optional<SchemaSendResponse> response = ac.schemas(request);
+            if (response.isPresent()) {
+                // save it to the db...
+                SchemaSendResponse ssr = response.get();
+                result = this.addSchema(ssr.getSchemaId(), schemaLabel, defaultAttributeName, null);
+            } else {
+                log.error("Schema not created.");
+                throw new SchemaException("Schema not created; could not complete request with ledger");
+            }
+
+        } catch (IOException e) {
+            log.error("aca-py not reachable", e);
+            throw new NetworkException("No aries connection", e);
+        }
+        return result;
+    }
 
     public @Nullable SchemaAPI addSchema(@NonNull String schemaId, @Nullable String label,
             @Nullable String defaultAttributeName, @Nullable List<AddTrustedIssuerRequest> restrictions) {
@@ -80,7 +121,7 @@ public class SchemaService {
         }
 
         try {
-            Optional<org.hyperledger.aries.api.schema.SchemaSendResponse.Schema> ariesSchema = ac.schemasGetById(sId);
+            Optional<SchemaSendResponse.Schema> ariesSchema = ac.schemasGetById(sId);
             if (ariesSchema.isPresent()) {
                 BPASchema dbS = BPASchema.builder()
                         .label(label)
@@ -113,7 +154,7 @@ public class SchemaService {
 
     public List<SchemaAPI> listSchemas() {
         List<SchemaAPI> result = new ArrayList<>();
-        schemaRepo.findAll().forEach(dbS -> result.add(SchemaAPI.from(dbS)));
+        schemaRepo.findAll().forEach(dbS -> result.add(SchemaAPI.from(dbS, id)));
         return result;
     }
 
@@ -140,7 +181,7 @@ public class SchemaService {
     public Set<String> getSchemaAttributeNames(@NonNull String schemaId) {
         Set<String> result = new LinkedHashSet<>();
         try {
-            final Optional<org.hyperledger.aries.api.schema.SchemaSendResponse.Schema> schema = ac
+            final Optional<SchemaSendResponse.Schema> schema = ac
                     .schemasGetById(schemaId);
             if (schema.isPresent()) {
                 result = new LinkedHashSet<>(schema.get().getAttrNames());
