@@ -1,112 +1,88 @@
-/*
- * Copyright (c) 2020-2021 - for information on the respective copyright owner
- * see the NOTICE file and/or the repository at
- * https://github.com/hyperledger-labs/business-partner-agent
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 package org.hyperledger.bpa.impl.aries;
 
-import org.hyperledger.aries.api.present_proof.*;
-import org.hyperledger.bpa.api.exception.PresentationConstructionException;
+import lombok.NonNull;
+import org.hyperledger.aries.api.present_proof.PresentProofRequest;
+import org.hyperledger.aries.api.present_proof.PresentationExchangeRecord;
+import org.hyperledger.aries.api.present_proof.PresentationRequest;
+import org.hyperledger.aries.api.present_proof.PresentationRequestCredentials;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
 
-public class PresentationRequestHelper {
+public class PresentationRequestBuilder {
 
     /**
-     * Returns a valid PresentationRequest if possible (no preference)
-     * 
+     * Auto accept all matching credentials
      * @param presentationExchange {@link PresentationExchangeRecord}
-     * @param validCredentials     {@link List<PresentationRequestCredentials>}
+     * @param matchingCredentials {@link PresentationRequestCredentials}
      * @return {@link PresentationRequest}
      */
-    public static Optional<PresentationRequest> buildAny(
-            PresentationExchangeRecord presentationExchange,
-            List<PresentationRequestCredentials> validCredentials)
-            throws PresentationConstructionException {
-        Optional<PresentationRequest> result = Optional.empty();
-        result = Optional.of(PresentationRequest.builder()
-                .requestedAttributes(buildRequestedAttributes(
-                        presentationExchange.getPresentationRequest().getRequestedAttributes(),
-                        validCredentials))
-                .requestedPredicates(buildRequestedPredicates(
-                        presentationExchange.getPresentationRequest().getRequestedPredicates(),
-                        validCredentials))
-                .build());
-        return result;
+    public static Optional<PresentationRequest> acceptAll(
+            @NonNull PresentationExchangeRecord presentationExchange,
+            @NonNull List<PresentationRequestCredentials> matchingCredentials) {
 
+        Optional<PresentationRequest> result = Optional.empty();
+        Map<String, PresentationRequest.IndyRequestedCredsRequestedAttr> requestedAttributes =
+                buildRequestedAttributes(presentationExchange, matchingCredentials);
+        Map<String, PresentationRequest.IndyRequestedCredsRequestedPred> requestedPredicates =
+                buildRequestedPredicates(presentationExchange, matchingCredentials);
+
+        if (!requestedAttributes.isEmpty() || !requestedPredicates.isEmpty()) {
+            result = Optional.of(PresentationRequest
+                    .builder()
+                    .requestedAttributes(requestedAttributes)
+                    .requestedPredicates(requestedPredicates)
+                    .build());
+        }
+        return result;
     }
 
-    // TODO update to handle any shape of RequestedAttributes
     private static Map<String, PresentationRequest.IndyRequestedCredsRequestedAttr> buildRequestedAttributes(
-            Map<String, PresentProofRequest.ProofRequest.ProofAttributes> requestedAttributes,
-            List<PresentationRequestCredentials> validCredentials)
-            throws PresentationConstructionException {
+            @NonNull PresentationExchangeRecord presentationExchange,
+            @NonNull List<PresentationRequestCredentials> matchingCredentials) {
 
-        Map<String, PresentationRequest.IndyRequestedCredsRequestedAttr> result = new HashMap<>();
-
-        for (Map.Entry<String, PresentProofRequest.ProofRequest.ProofAttributes> reqAttr : requestedAttributes
-                .entrySet()) {
-            String presentation_referent = reqAttr.getKey();
-
-            Optional<PresentationRequestCredentials> cred = Optional.empty();
-
-            cred = validCredentials.stream()
-                    .filter(vc -> vc.getPresentationReferents().get(0).equals(
-                            presentation_referent))
-                    .findFirst();
-
-            cred.ifPresentOrElse(c -> {
-                result.put(reqAttr.getKey(), PresentationRequest.IndyRequestedCredsRequestedAttr.builder()
-                        .credId(c.getCredentialInfo().getReferent())
-                        .revealed(true)
-                        .build());
-            }, () -> {
-                throw new PresentationConstructionException("Provided Credentials cannot satisfy proof request");
+        Map<String, PresentationRequest.IndyRequestedCredsRequestedAttr> result = new LinkedHashMap<>();
+        PresentProofRequest.ProofRequest presentationRequest = presentationExchange.getPresentationRequest();
+        if (presentationRequest != null && presentationRequest.getRequestedAttributes() != null) {
+            Set<String> requestedReferents = presentationRequest.getRequestedAttributes().keySet();
+            requestedReferents.forEach(ref -> {
+                // find requested referent in matching wallet credentials
+                matchReferent(matchingCredentials, ref).ifPresent(
+                        match -> result.put(ref, PresentationRequest.IndyRequestedCredsRequestedAttr
+                                .builder()
+                                .credId(match)
+                                .revealed(Boolean.TRUE)
+                                .build()));
             });
         }
-
         return result;
+    }
 
-    };
-
-    // TODO update to handle any shape of RequestedPredicates
     private static Map<String, PresentationRequest.IndyRequestedCredsRequestedPred> buildRequestedPredicates(
-            Map<String, PresentProofRequest.ProofRequest.ProofAttributes> requestedPredicates,
-            List<PresentationRequestCredentials> validCredentials)
-            throws PresentationConstructionException {
-        Map<String, PresentationRequest.IndyRequestedCredsRequestedPred> result = new HashMap<>();
+            @NonNull PresentationExchangeRecord presentationExchange,
+            @NonNull List<PresentationRequestCredentials> matchingCredentials) {
+        Map<String, PresentationRequest.IndyRequestedCredsRequestedPred> result = new LinkedHashMap<>();
 
-        for (Map.Entry<String, PresentProofRequest.ProofRequest.ProofAttributes> reqPred : requestedPredicates
-                .entrySet()) {
-            String presentation_referent = reqPred.getKey();
-            Optional<PresentationRequestCredentials> cred = validCredentials.stream()
-                    .filter(vc -> vc.getPresentationReferents().get(0).equals(
-                        presentation_referent))
-                    .findFirst();
-
-            cred.ifPresentOrElse(c -> {
-                result.put(reqPred.getKey(), PresentationRequest.IndyRequestedCredsRequestedPred.builder()
-                        .credId(c.getCredentialInfo().getReferent())
-                        .build());
-            }, () -> {
-                throw new PresentationConstructionException("Provided Credentials cannot satisfy proof request");
-            });
+        PresentProofRequest.ProofRequest presentationRequest = presentationExchange.getPresentationRequest();
+        if (presentationRequest != null && presentationRequest.getRequestedPredicates() != null) {
+            Set<String> requestedReferents = presentationRequest.getRequestedPredicates().keySet();
+            requestedReferents.forEach(ref -> matchReferent(matchingCredentials, ref).ifPresent(
+                    match -> result.put(ref, PresentationRequest.IndyRequestedCredsRequestedPred
+                            .builder()
+                            .credId(match)
+                            // .timestamp let aca-py do this
+                            .build())));
         }
-
         return result;
-    };
+    }
 
+    private static Optional<String> matchReferent(
+            @NotNull List<PresentationRequestCredentials> matchingCredentials, String ref) {
+        return matchingCredentials
+                .stream()
+                .filter(cred -> cred.getPresentationReferents().contains(ref))
+                .map(PresentationRequestCredentials::getCredentialInfo)
+                .map(PresentationRequestCredentials.CredentialInfo::getReferent)
+                .findFirst();
+    }
 }

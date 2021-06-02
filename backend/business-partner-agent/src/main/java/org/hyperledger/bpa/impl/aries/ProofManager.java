@@ -178,8 +178,6 @@ public class ProofManager {
             } catch (IOException e) {
                 log.error("aca-py not reachable.", e);
                 return;
-            } catch (AriesException e) {
-                log.error("aca-py wallet item not found");
             }
         } else {
             throw new WrongApiUsageException(
@@ -189,38 +187,29 @@ public class ProofManager {
 
     private void presentProof(PresentationExchangeRecord presentationExchangeRecord) {
         if (presentationExchangeRecord.getState() == PresentationExchangeState.REQUEST_RECEIVED) {
-            Optional<List<PresentationRequestCredentials>> validCredentials = Optional.empty();
             try {
-                validCredentials = ac
-                        .presentProofRecordsCredentials(presentationExchangeRecord.getPresentationExchangeId());
+                ac.presentProofRecordsCredentials(presentationExchangeRecord.getPresentationExchangeId()).ifPresentOrElse(creds -> {
+                    if (CollectionUtils.isNotEmpty(creds)) {
+                        PresentationRequestBuilder.acceptAll(presentationExchangeRecord, creds).ifPresent(pr -> {
+                            try {
+                                ac.presentProofRecordsSendPresentation(
+                                        presentationExchangeRecord.getPresentationExchangeId(),
+                                        pr);
+                            } catch (IOException e) {
+                                log.error("aca-py not available", e);
+                            }
+                        });
+                    } else {
+                        log.warn("No matching credentials found in the wallet");
+                        // TODO store this somewhere for the user and send problem report to requester
+                    }
+                }, () -> log.error("Could not load matching credentials from aca-py"));
             } catch (IOException e) {
-                throw new NetworkException("aca-py not available", e);
+                log.error("aca-py not available", e);
             }
-            validCredentials.ifPresentOrElse(validCreds -> {
-                try {
-                    Optional<PresentationRequest> presentation = PresentationRequestHelper.buildAny(
-                            presentationExchangeRecord,
-                            validCreds);
-                    presentation.ifPresentOrElse((pres) -> {
-                        try {
-                            ac.presentProofRecordsSendPresentation(
-                                    presentationExchangeRecord.getPresentationExchangeId(),
-                                    pres);
-                        } catch (IOException e) {
-                            throw new AriesException(500, "Could not create aries connection invitation");
-                        }
-                    }, () -> {
-                        log.error("Could not construct valid proof");
-                    });
-                } catch (PresentationConstructionException e) {
-                    // unable to construct valid proof
-                    log.error("Unable to construct valid proof");
-                }
-            }, () -> {
-                log.error("No valid credentials found to build proof");
-            });
         }
     }
+
 
     // handles all proof events to track state changes
     public void handleProofEvent(PresentationExchangeRecord proof) {
