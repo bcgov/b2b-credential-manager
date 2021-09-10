@@ -129,6 +129,15 @@ export default {
 
     filteredSchemaField() {
       let fields = this.schema.fields;
+      fields.sort((f1, f2) => {
+        if (f1.label < f2.label) {
+          return -1;
+        }
+        if (f1.label > f2.label) {
+          return +1;
+        }
+        return 0;
+      });
       if (!this.isReadOnly) {
         return fields;
       } else {

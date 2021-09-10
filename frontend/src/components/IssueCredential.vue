@@ -38,7 +38,7 @@
         <v-row>
           <v-col>
             <v-text-field
-              v-for="field in credDef.fields"
+              v-for="field in sortedCredDefFields"
               :key="field.type"
               :label="field.label"
               placeholder=""
@@ -121,6 +121,17 @@ export default {
   computed: {
     expertMode() {
       return this.$store.state.expertMode;
+    },
+    sortedCredDefFields() {
+      return this.credDef.fields.sort((f1, f2) => {
+        if (f1.label < f2.label) {
+          return -1;
+        }
+        if (f1.label > f2.label) {
+          return +1;
+        }
+        return 0;
+      });
     },
   },
   watch: {
