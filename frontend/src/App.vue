@@ -28,12 +28,12 @@
               <v-list-item-title
                 ><v-img
                   contain
-                  max-height="50"
-                  max-width="100"
-                  :src="ux.navigation.avatar.agent.src"
+                  max-height="100"
+                  max-width="228"
+                  src="https://www.pwc.com/etc.clientlibs/pwc/clientlibs/rebrand-clientlibs/components-colors/resources/images/slim-header-v2/PwC-logo.svg"
                 ></v-img
               ></v-list-item-title>
-              <v-list-item-subtitle
+              <v-list-item-subtitle class="text-center"
                 >Business Partner Agent</v-list-item-subtitle
               >
             </v-list-item-content>
