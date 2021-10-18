@@ -29,7 +29,7 @@ const store = new Vuex.Store({
     partnerSelectList: [],
     credDefSelectList: [],
     busyStack: 0,
-    expertMode: false,
+    expertMode: true,
     settings: {},
   },
 
