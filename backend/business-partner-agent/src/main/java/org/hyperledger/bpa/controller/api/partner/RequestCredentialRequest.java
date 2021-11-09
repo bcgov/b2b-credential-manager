@@ -19,11 +19,11 @@ package org.hyperledger.bpa.controller.api.partner;
 
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.hyperledger.bpa.api.aries.ExchangeVersion;
+import org.hyperledger.aries.api.ExchangeVersion;
 
 @Data
 @NoArgsConstructor
 public class RequestCredentialRequest {
     public String documentId;
-    public ExchangeVersion version;
+    public ExchangeVersion exchangeVersion;
 }

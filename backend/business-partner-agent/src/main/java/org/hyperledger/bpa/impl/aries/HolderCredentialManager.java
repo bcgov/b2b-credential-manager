@@ -45,7 +45,7 @@ import org.hyperledger.aries.api.jsonld.VerifiableCredential.VerifiableIndyCrede
 import org.hyperledger.aries.api.jsonld.VerifiablePresentation;
 import org.hyperledger.bpa.api.CredentialType;
 import org.hyperledger.bpa.api.aries.AriesCredential;
-import org.hyperledger.bpa.api.aries.ExchangeVersion;
+import org.hyperledger.aries.api.ExchangeVersion;
 import org.hyperledger.bpa.api.aries.ProfileVC;
 import org.hyperledger.bpa.api.aries.SchemaAPI;
 import org.hyperledger.bpa.api.exception.EntityNotFoundException;
@@ -68,13 +68,11 @@ import org.hyperledger.bpa.model.Partner;
 import org.hyperledger.bpa.repository.HolderCredExRepository;
 import org.hyperledger.bpa.repository.MyDocumentRepository;
 import org.hyperledger.bpa.repository.PartnerRepository;
+import org.hyperledger.bpa.util.CryptoUtil;
 
 import java.io.IOException;
 import java.time.Instant;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -123,17 +121,19 @@ public class HolderCredentialManager extends BaseCredentialManager {
     public void sendCredentialRequest(@NonNull UUID partnerId, @NonNull UUID myDocId,
             @Nullable ExchangeVersion version) {
         Partner dbPartner = partnerRepo.findById(partnerId)
-                .orElseThrow(() -> new PartnerException("No partner found for id: " + partnerId));
+                .orElseThrow(
+                        () -> new PartnerException(msg.getMessage("api.partner.not.found", Map.of("id", partnerId))));
         MyDocument dbDoc = docRepo.findById(myDocId)
-                .orElseThrow(() -> new PartnerException("No document found for id: " + myDocId));
+                .orElseThrow(
+                        () -> new PartnerException(msg.getMessage("api.document.not.found", Map.of("id", myDocId))));
         if (!CredentialType.INDY.equals(dbDoc.getType())) {
-            throw new PartnerException("Only documents that are based on a " +
-                    "schema can be converted into a credential");
+            throw new PartnerException(msg.getMessage("api.schema.credential.document.conversion.failure"));
         }
         try {
             BPASchema s = schemaService.getSchemaFor(dbDoc.getSchemaId())
                     .orElseThrow(
-                            () -> new PartnerException("No configured schema found for id: " + dbDoc.getSchemaId()));
+                            () -> new PartnerException(msg.getMessage("api.schema.restriction.schema.not.found",
+                                    Map.of("id", dbDoc.getSchemaId()))));
             V1CredentialProposalRequest v1CredentialProposalRequest = V1CredentialProposalRequest
                     .builder()
                     .connectionId(Objects.requireNonNull(dbPartner.getConnectionId()))
@@ -159,6 +159,7 @@ public class HolderCredentialManager extends BaseCredentialManager {
                 ac.issueCredentialV2SendProposal(v1CredentialProposalRequest).ifPresent(v2 -> dbCredEx
                         .threadId(v2.getThreadId())
                         .credentialExchangeId(v2.getCredExId())
+                        .exchangeVersion(ExchangeVersion.V2)
                         .credentialProposal(v2.toV1CredentialExchangeFromProposal().getCredentialProposalDict()
                                 .getCredentialProposal()));
             }
@@ -245,7 +246,7 @@ public class HolderCredentialManager extends BaseCredentialManager {
 
     public void declineCredentialOffer(@NonNull UUID id, @Nullable String message) {
         if (StringUtils.isEmpty(message)) {
-            message = "Holder declined credential offer: no reason provided";
+            message = msg.getMessage("api.holder.credential.exchange.declined");
         }
         BPACredentialExchange dbEx = getCredentialExchange(id);
         dbEx.pushStates(CredentialExchangeState.DECLINED, Instant.now());
@@ -304,7 +305,8 @@ public class HolderCredentialManager extends BaseCredentialManager {
                 log.trace("Running revocation check for credential exchange: {}", cred.getReferent());
                 ac.credentialRevoked(Objects.requireNonNull(cred.getReferent())).ifPresent(isRevoked -> {
                     if (isRevoked.getRevoked() != null && isRevoked.getRevoked()) {
-                        holderCredExRepo.updateRevoked(cred.getId(), Boolean.TRUE);
+                        cred.pushStates(CredentialExchangeState.REVOKED, Instant.now());
+                        holderCredExRepo.updateRevoked(cred.getId(), Boolean.TRUE, cred.getStateToTimestamp());
                         log.debug("Credential with referent id: {} has been revoked", cred.getReferent());
                     }
                 });
@@ -326,8 +328,14 @@ public class HolderCredentialManager extends BaseCredentialManager {
         holderCredExRepo.findByCredentialExchangeId(credEx.getCredentialExchangeId()).ifPresentOrElse(db -> {
             // counter offer or accepted proposal from issuer
             db.pushStates(credEx.getState(), credEx.getUpdatedAt());
+            V1CredentialExchange.CredentialProposalDict.CredentialProposal credentialOffer = credEx
+                    .getCredentialProposalDict().getCredentialProposal();
             holderCredExRepo.updateOnCredentialOfferEvent(db.getId(), db.getState(), db.getStateToTimestamp(),
-                    credEx.getCredentialProposalDict().getCredentialProposal());
+                    credentialOffer);
+            // if offer equals proposal send request immediately
+            if (CryptoUtil.hashCompare(db.getCredentialProposal(), credentialOffer)) {
+                this.sendCredentialRequest(db.getId());
+            }
         }, () -> partnerRepo.findByConnectionId(credEx.getConnectionId()).ifPresent(p -> {
             // issuer started with offer, no preexisting proposal
             BPASchema bpaSchema = schemaService.getSchemaFor(credEx.getSchemaId()).orElse(null);
@@ -383,7 +391,7 @@ public class HolderCredentialManager extends BaseCredentialManager {
     }
 
     // v2 credential, signed and stored in wallet
-    public void handleV2CredentialDone(@NonNull V20CredExRecord credEx) {
+    public void handleV2CredentialReceived(@NonNull V20CredExRecord credEx) {
         holderCredExRepo.findByCredentialExchangeId(credEx.getCredExId()).ifPresent(
                 dbCred -> V2ToV1IndyCredentialConverter.INSTANCE().toV1Credential(credEx)
                         .ifPresent(c -> {
