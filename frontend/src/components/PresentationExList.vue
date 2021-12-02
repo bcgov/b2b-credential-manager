@@ -1,7 +1,7 @@
 <!--
- Copyright (c) 2020 - for information on the respective copyright owner
+ Copyright (c) 2020-2021 - for information on the respective copyright owner
  see the NOTICE file and/or the repository at
- https://github.com/hyperledger-labs/organizational-agent
+ https://github.com/hyperledger-labs/business-partner-agent
 
  SPDX-License-Identifier: Apache-2.0
 -->
@@ -34,23 +34,32 @@
       <template v-slot:[`item.state`]="{ item }">
         <span>
           {{ (item.state ? item.state.replace("_", " ") : "") | capitalize }}
+          <v-icon v-if="item.valid" color="green" class="iconHeight"
+            >$vuetify.icons.check</v-icon
+          >
+          <v-icon
+            v-if="isStateVerified(item) && !item.valid && !item.problemReport"
+            color="error"
+            small
+            class="iconHeight"
+          >
+            $vuetify.icons.connectionAlert
+          </v-icon>
+          <v-tooltip v-if="item.problemReport" top>
+            <template v-slot:activator="{ on, attrs }">
+              <v-icon
+                color="error"
+                small
+                class="iconHeight"
+                v-bind="attrs"
+                v-on="on"
+              >
+                $vuetify.icons.connectionAlert
+              </v-icon>
+            </template>
+            <span>{{ item.problemReport }}</span>
+          </v-tooltip>
         </span>
-        <v-icon v-if="item.valid" color="green">$vuetify.icons.check</v-icon>
-        <v-icon
-          v-if="isStateVerified(item) && !item.valid && !item.problemReport"
-          color="error"
-          small
-        >
-          $vuetify.icons.connectionAlert
-        </v-icon>
-        <v-tooltip v-if="item.problemReport" top>
-          <template v-slot:activator="{ on, attrs }">
-            <v-icon color="error" small v-bind="attrs" v-on="on">
-              $vuetify.icons.connectionAlert
-            </v-icon>
-          </template>
-          <span>{{ item.problemReport }}</span>
-        </v-tooltip>
       </template>
       <template v-slot:[`item.updatedAt`]="{ item }">
         {{ item.updatedAt | formatDateLong }}
@@ -59,7 +68,9 @@
     <v-dialog v-if="dialog" v-model="dialog" scrollable max-width="1000px">
       <v-card>
         <v-card-title class="bg-light">
-          <span class="headline">Presentation Exchange</span>
+          <span class="headline">{{
+            $t("component.presentationExList.dialog.title")
+          }}</span>
           <v-layout justify-end>
             <v-btn depressed color="red" icon @click="deleteItem">
               <v-icon dark>$vuetify.icons.delete</v-icon>
@@ -91,24 +102,32 @@
             border="left"
             type="warning"
           >
-            Request can't be fullfilled with credentials in wallet
+            {{ $t("component.presentationExList.dialog.alertFulfill") }}
           </v-alert>
+          <v-text-field
+            v-if="isStateRequestReceived"
+            v-model="declineReasonText"
+            :label="
+              $t('component.presentationExList.dialog.declineReasonLabel')
+            "
+            counter="255"
+          ></v-text-field>
         </v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
-          <v-bpa-button color="secondary" @click="closeItem(record)"
-            >Close</v-bpa-button
-          >
+          <v-bpa-button color="secondary" @click="closeItem(record)">{{
+            $t("button.close")
+          }}</v-bpa-button>
           <span v-if="isStateRequestReceived">
-            <v-bpa-button color="secondary" @click="decline"
-              >Decline</v-bpa-button
-            >
+            <v-bpa-button color="secondary" @click="decline">{{
+              $t("button.decline")
+            }}</v-bpa-button>
             <v-bpa-button
               :loading="isBusy"
               color="primary"
               :disabled="!isReadyToApprove"
               @click="approve"
-              >Accept</v-bpa-button
+              >{{ $t("button.accept") }}</v-bpa-button
             >
           </span>
         </v-card-actions>
@@ -116,7 +135,11 @@
     </v-dialog>
   </v-container>
 </template>
-
+<style scoped>
+.iconHeight {
+  display: inherit;
+}
+</style>
 <script>
 import { proofExService } from "@/services";
 import { EventBus } from "@/main";
@@ -127,14 +150,14 @@ import PresentationRecordV2 from "@/components/PresentationRecordV2";
 import VBpaButton from "@/components/BpaButton";
 export default {
   props: {
-    items: Array,
+    value: Array,
     openItemById: String,
   },
   mounted() {
     // Open Item directly. Is used for links from notifications/activity
     if (this.openItemById) {
       // FIXME: items observable is typically not resolved yet. Then items is empty
-      const item = this.items.find((item) => item.id === this.openItemById);
+      const item = this.items.find((i) => i.id === this.openItemById);
       if (item) {
         this.openItem(item);
       } else {
@@ -155,7 +178,20 @@ export default {
       isBusy: false,
       isLoading: false,
       isWaitingForMatchingCreds: false,
-      headers: [
+      declineReasonText: "",
+    };
+  },
+  computed: {
+    items: {
+      get() {
+        return this.value;
+      },
+      set(val) {
+        this.$emit("input", val);
+      },
+    },
+    headers() {
+      return [
         {
           text: "",
           value: "indicator",
@@ -163,25 +199,23 @@ export default {
           filterable: false,
         },
         {
-          text: "Name",
+          text: this.$t("component.presentationExList.table.label"),
           value: "label",
         },
         {
-          text: "Role",
+          text: this.$t("component.presentationExList.table.role"),
           value: "role",
         },
         {
-          text: "Updated at",
+          text: this.$t("component.presentationExList.table.updatedAt"),
           value: "updatedAt",
         },
         {
-          text: "State",
+          text: this.$t("component.presentationExList.table.state"),
           value: "state",
         },
-      ],
-    };
-  },
-  computed: {
+      ];
+    },
     showV2() {
       return (
         this.record.state &&
@@ -209,12 +243,19 @@ export default {
     },
   },
   methods: {
+    closeDialog() {
+      this.declineReasonText = "";
+      this.dialog = false;
+    },
     async approve() {
       const payload = this.prepareApprovePayload();
       try {
         await proofExService.approveProofRequest(this.record.id, payload);
-        EventBus.$emit("success", "Proof has been sent");
-        this.dialog = false;
+        EventBus.$emit(
+          "success",
+          this.$t("component.presentationExList.eventSuccessApprove")
+        );
+        this.closeDialog();
         this.$emit("changed");
       } catch (e) {
         EventBus.$emit("error", this.$axiosErrorMessage(e));
@@ -222,22 +263,48 @@ export default {
     },
     async decline() {
       try {
-        await proofExService.declineProofRequest(this.record.id);
-        EventBus.$emit("success", "Presentation request declined");
-        this.dialog = false;
+        await proofExService.declineProofRequest(
+          this.record.id,
+          this.declineReasonText
+        );
+        EventBus.$emit(
+          "success",
+          this.$t("component.presentationExList.eventSuccessDecline")
+        );
+        this.closeDialog();
         this.$emit("changed");
       } catch (e) {
         EventBus.$emit("error", this.$axiosErrorMessage(e));
       }
     },
     openItem(item) {
-      this.record = item;
+      const itemCopy = {};
+      Object.assign(itemCopy, item);
+
+      const presentationStateToTimestamp = Object.entries(
+        itemCopy.stateToTimestamp
+      );
+
+      for (const stateElement of presentationStateToTimestamp) {
+        if (
+          itemCopy.problemReport &&
+          stateElement[0] === PresentationExchangeStates.DECLINED
+        ) {
+          stateElement.push(itemCopy.problemReport);
+        } else {
+          stateElement.push(undefined);
+        }
+      }
+
+      itemCopy.stateToTimestamp = presentationStateToTimestamp;
+
+      this.record = itemCopy;
       this.dialog = true;
       this.addProofData();
       this.$emit("openItem", item);
     },
     closeItem() {
-      this.dialog = false;
+      this.closeDialog();
       this.record = {};
     },
     isStateVerified(item) {
@@ -251,8 +318,11 @@ export default {
             (item) => item.id === this.record.id
           );
           this.items.splice(idx, 1);
-          EventBus.$emit("success", "Presentation record deleted");
-          this.dialog = false;
+          EventBus.$emit(
+            "success",
+            this.$t("component.presentationExList.eventSuccessDelete")
+          );
+          this.closeDialog();
         }
       } catch (e) {
         EventBus.$emit("error", this.$axiosErrorMessage(e));
@@ -360,7 +430,6 @@ export default {
         });
 
         this.record.canBeFullfilled = this.canBeFullfilled();
-
         this.isWaitingForMatchingCreds = false;
       });
     },

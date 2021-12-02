@@ -7,7 +7,7 @@
     <parent>
         <groupId>org.hyperledger.business-partner-agent</groupId>
         <artifactId>business-partner-agent-parent</artifactId>
-        <version>0.1-SNAPSHOT</version>
+        <version>${revision}</version>
     </parent>
 
     <artifactId>business-partner-agent</artifactId>
@@ -55,10 +55,6 @@
             <artifactId>micronaut-views-handlebars</artifactId>
         </dependency>
         <dependency>
-            <groupId>io.micronaut.security</groupId>
-            <artifactId>micronaut-security-session</artifactId>
-        </dependency>
-        <dependency>
             <groupId>io.micronaut.data</groupId>
             <artifactId>micronaut-data-jdbc</artifactId>
             <version>${micronaut.data.version}</version>
@@ -70,16 +66,20 @@
             </exclusions>
         </dependency>
         <dependency>
-            <groupId>io.micronaut.rxjava3</groupId>
-            <artifactId>micronaut-rxjava3</artifactId>
-        </dependency>
-        <dependency>
             <groupId>io.micronaut.sql</groupId>
             <artifactId>micronaut-jdbc-hikari</artifactId>
         </dependency>
         <dependency>
+            <groupId>io.micronaut.rxjava3</groupId>
+            <artifactId>micronaut-rxjava3</artifactId>
+        </dependency>
+        <dependency>
             <groupId>io.micronaut.security</groupId>
             <artifactId>micronaut-security</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.micronaut.security</groupId>
+            <artifactId>micronaut-security-session</artifactId>
         </dependency>
         <dependency>
             <groupId>io.micronaut.security</groupId>
@@ -88,6 +88,11 @@
         <dependency>
             <groupId>io.micronaut.security</groupId>
             <artifactId>micronaut-security-jwt</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.micronaut.redis</groupId>
+            <artifactId>micronaut-redis-lettuce</artifactId>
+            <version>5.1.0</version>
         </dependency>
         <dependency>
             <groupId>io.swagger.core.v3</groupId>
@@ -102,7 +107,7 @@
         <dependency><!-- Overwrite for jakarta-annotations-api -->
             <groupId>org.apache.tomcat</groupId>
             <artifactId>tomcat-annotations-api</artifactId>
-            <version>10.1.0-M5</version>
+            <version>10.1.0-M7</version>
         </dependency>
 
         <!-- Logging -->
@@ -123,7 +128,7 @@
         <dependency>
             <groupId>network.idu.acapy</groupId>
             <artifactId>aries-client-python</artifactId>
-            <version>0.7.13</version>
+            <version>0.7.14</version>
         </dependency>
         <dependency>
             <groupId>org.hyperledger.business-partner-agent</groupId>
@@ -150,7 +155,7 @@
         <dependency>
             <groupId>org.springframework.security</groupId>
             <artifactId>spring-security-crypto</artifactId>
-            <version>5.5.2</version>
+            <version>5.6.0</version>
         </dependency>
         <dependency>
             <groupId>org.mapstruct</groupId>
@@ -224,6 +229,10 @@
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>${maven.compiler.plugin.version}</version>
                 <configuration>
@@ -265,14 +274,6 @@
                         </path>
                     </annotationProcessorPaths>
                 </configuration>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-javadoc-plugin</artifactId>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-source-plugin</artifactId>
             </plugin>
             <!-- mvn se.ayoy.maven-plugins:ayoy-license-verifier-maven-plugin:verify -->
             <plugin>

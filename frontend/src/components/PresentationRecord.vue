@@ -1,7 +1,7 @@
 <!--
- Copyright (c) 2020 - for information on the respective copyright owner
+ Copyright (c) 2020-2021 - for information on the respective copyright owner
  see the NOTICE file and/or the repository at
- https://github.com/hyperledger-labs/organizational-agent
+ https://github.com/hyperledger-labs/business-partner-agent
 
  SPDX-License-Identifier: Apache-2.0
 -->
@@ -10,7 +10,7 @@
   <v-container>
     <v-list-item>
       <v-list-item-title class="grey--text text--darken-2 font-weight-medium">
-        Role
+        {{ $t("view.presentationRecord.role") }}
       </v-list-item-title>
       <v-list-item-subtitle align="">
         {{ record.role | capitalize }}
@@ -19,7 +19,7 @@
 
     <v-list-item>
       <v-list-item-title class="grey--text text--darken-2 font-weight-medium">
-        State
+        {{ $t("view.presentationRecord.state") }}
       </v-list-item-title>
       <v-list-item-subtitle align="">
         {{ (record.state ? record.state.replace("_", " ") : "") | capitalize }}
@@ -28,48 +28,18 @@
 
     <v-list-item>
       <v-list-item-title class="grey--text text--darken-2 font-weight-medium">
-        Request Name
+        {{ $t("view.presentationRecord.requestName") }}
       </v-list-item-title>
       <v-list-item-subtitle align="">
         {{ record.proofRequest ? record.proofRequest.name : "" }}
       </v-list-item-subtitle>
     </v-list-item>
     <!-- Timeline  -->
-    <v-expansion-panels accordion flat>
-      <v-expansion-panel>
-        <v-expansion-panel-header
-          class="grey--text text--darken-2 font-weight-medium bg-light"
-          >Timeline</v-expansion-panel-header
-        >
-        <v-expansion-panel-content class="bg-light">
-          <v-timeline dense>
-            <v-timeline-item
-              fill-dot
-              small
-              v-for="item in Object.entries(record.stateToTimestamp)"
-              :key="item.key"
-            >
-              <v-row class="pt-1">
-                <v-col cols="3">
-                  {{ item[1] | formatDateLong }}
-                </v-col>
-                <v-col>
-                  <div class="text-caption">
-                    <strong>
-                      {{ item[0].replace("_", " ") | capitalize }}
-                    </strong>
-                  </div>
-                </v-col>
-              </v-row>
-            </v-timeline-item>
-          </v-timeline>
-        </v-expansion-panel-content>
-      </v-expansion-panel>
-    </v-expansion-panels>
+    <Timeline :time-entries="record.stateToTimestamp"></Timeline>
 
     <!-- Request Content -->
     <template v-if="!isStateProposalSent">
-      <h4 class="my-4">Request Content:</h4>
+      <h4 class="my-4">{{ $t("view.presentationRecord.requestContent") }}:</h4>
 
       <!-- Requested Attributes -->
 
@@ -92,14 +62,16 @@
                 class="ml-n4 mb-4"
               >
                 <v-list-item-title>
-                  <strong>Issuer</strong>
+                  <strong>{{ $t("view.presentationRecord.issuer") }}</strong>
                 </v-list-item-title>
                 <v-list-item-subtitle>
                   {{ group.proofData.identifier.issuerLabel }}
                 </v-list-item-subtitle>
               </v-list-item>
 
-              <h4 class="mb-4">Data fields</h4>
+              <h4 class="mb-4">
+                {{ $t("view.presentationRecord.dataFields") }}
+              </h4>
 
               <template v-if="type === 'requestedAttributes'">
                 <v-list-item v-for="name in names(group)" :key="name">
@@ -134,9 +106,10 @@
               <v-expansion-panels accordion flat class="ml-n6">
                 <v-expansion-panel>
                   <v-expansion-panel-header class="bg-light"
-                    ><strong>Restrictions</strong></v-expansion-panel-header
+                    ><strong>{{
+                      $t("view.presentationRecord.restrictions")
+                    }}</strong></v-expansion-panel-header
                   >
-
                   <v-expansion-panel-content class="bg-light">
                     <v-list-item-group
                       v-for="(restr, idy) in group.restrictions"
@@ -193,11 +166,11 @@
 
     <v-container v-if="isStateVerified">
       <v-alert v-if="record.valid" dense border="left" type="success">
-        Presentation is valid
+        {{ $t("view.presentationRecord.presentationValid") }}
       </v-alert>
 
       <v-alert v-else dense border="left" type="error">
-        Presentation is not valid
+        {{ $t("view.presentationRecord.presentationNotValid") }}
       </v-alert>
     </v-container>
 
@@ -224,6 +197,7 @@ import {
   RequestTypes,
   Restrictions,
 } from "@/constants";
+import Timeline from "@/components/Timeline";
 export default {
   name: "PresentationRecord",
   props: {
@@ -302,7 +276,9 @@ export default {
           return `${credInfo.credentialId} ${revokedLabel}`;
         }
       } else {
-        return "No info found";
+        return this.$t(
+          "view.presentationRecord.matchingCredentials.noInfoFound"
+        );
       }
     },
     renderSchemaLabel(attrGroupName) {
@@ -333,7 +309,7 @@ export default {
       RequestTypes,
     };
   },
-  components: {},
+  components: { Timeline },
 };
 </script>
 

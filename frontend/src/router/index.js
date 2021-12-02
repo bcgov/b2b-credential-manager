@@ -1,10 +1,10 @@
 /*
- Copyright (c) 2020 - for information on the respective copyright owner
- see the NOTICE file and/or the repository at
- https://github.com/hyperledger-labs/organizational-agent
-
- SPDX-License-Identifier: Apache-2.0
-*/
+ * Copyright (c) 2020-2021 - for information on the respective copyright owner
+ * see the NOTICE file and/or the repository at
+ * https://github.com/hyperledger-labs/business-partner-agent
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 
 import Vue from "vue";
 import VueRouter from "vue-router";
@@ -34,6 +34,8 @@ import ProofTemplates from "@/views/ProofTemplates";
 import ProofTemplateCreate from "@/views/ProofTemplateCreate";
 import ProofTemplateView from "@/views/ProofTemplateView";
 import RequestPresentationCreateProofTemplate from "@/views/RequestPresentationCreateProofTemplate";
+import RequestCredential from "@/views/RequestCredential";
+import RequestCredentialCreateDocument from "@/views/RequestCredentialCreateDocument";
 
 Vue.use(VueRouter);
 
@@ -49,7 +51,7 @@ const routes = [
     component: Identity,
   },
   {
-    path: "/app/publicprofile",
+    path: "/app/public-profile",
     name: "PublicProfile",
     component: PublicProfile,
     props: true,
@@ -111,21 +113,33 @@ const routes = [
     props: true,
   },
   {
-    path: "/app/partners/:id/request",
+    path: "/app/partners/:id/request-presentation",
     name: "RequestPresentation",
     component: RequestPresentation,
     props: true,
   },
   {
-    path: "/app/partners/:id/request/create-proof-template",
+    path: "/app/partners/:id/request-presentation/create-proof-template",
     name: "RequestPresentationCreateProofTemplate",
     component: RequestPresentationCreateProofTemplate,
     props: true,
   },
   {
-    path: "/app/partners/:id/send",
+    path: "/app/partners/:id/send-presentation",
     name: "SendPresentation",
     component: SendPresentation,
+    props: true,
+  },
+  {
+    path: "/app/partners/:id/request-credential",
+    name: "RequestCredential",
+    component: RequestCredential,
+    props: true,
+  },
+  {
+    path: "/app/partners/:id/request-credential/create-document",
+    name: "RequestCredentialCreateDocument",
+    component: RequestCredentialCreateDocument,
     props: true,
   },
   {
@@ -160,7 +174,7 @@ const routes = [
     component: About,
   },
   {
-    path: "/app/credentialManagement",
+    path: "/app/credential-management",
     name: "CredentialManagement",
     component: CredentialManagement,
   },
@@ -170,18 +184,18 @@ const routes = [
     component: Notifications,
   },
   {
-    path: "/app/proofTemplates",
+    path: "/app/proof-templates",
     name: "ProofTemplates",
     component: ProofTemplates,
   },
   {
-    path: "/app/proofTemplate",
+    path: "/app/proof-template",
     name: "ProofTemplateCreate",
     component: ProofTemplateCreate,
     props: true,
   },
   {
-    path: "/app/proofTemplate/:id",
+    path: "/app/proof-template/:id",
     name: "ProofTemplateView",
     component: ProofTemplateView,
     props: true,

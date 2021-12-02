@@ -1,7 +1,7 @@
 <!--
- Copyright (c) 2020 - for information on the respective copyright owner
+ Copyright (c) 2020-2021 - for information on the respective copyright owner
  see the NOTICE file and/or the repository at
- https://github.com/hyperledger-labs/organizational-agent
+ https://github.com/hyperledger-labs/business-partner-agent
 
  SPDX-License-Identifier: Apache-2.0
 -->
@@ -9,12 +9,7 @@
   <v-container>
     <v-card v-if="isReady" class="mx-auto">
       <v-card-title class="bg-light">
-        <v-btn
-          depressed
-          color="secondary"
-          icon
-          @click="$router.push({ name: 'Wallet' })"
-        >
+        <v-btn depressed color="secondary" icon @click="$router.go(-1)">
           <v-icon dark>$vuetify.icons.prev</v-icon>
         </v-btn>
         {{ schemaLabel }}
@@ -33,7 +28,7 @@
       <v-card-text>
         <OrganizationalProfile
           v-if="isProfile(intDoc.type)"
-          v-bind:documentData="document.documentData"
+          v-model="document.documentData"
           ref="doc"
         ></OrganizationalProfile>
         <Credential
@@ -63,60 +58,65 @@
         </v-list-item>
         <v-divider></v-divider>
 
-        <v-list-item
-          v-if="this.id && !isProfile(document.type)"
-          :disabled="docModified()"
+        <div
+          v-if="
+            !disableVerificationRequest && this.id && !isProfile(document.type)
+          "
         >
-          <v-tooltip right v-model="showTooltip">
-            <template v-slot:activator="{ attrs }">
-              <v-list-item-content>
-                <v-list-item-title>Verification</v-list-item-title>
-                <v-list-item-subtitle
-                  >Request a verification</v-list-item-subtitle
-                >
-              </v-list-item-content>
-
-              <v-list-item-action>
-                <!-- TODO übergabe der parameter mit schemaId params {type: { type: meinType schemaId: schemaId }}-->
-                <v-btn
-                  v-bind="attrs"
-                  icon
-                  :to="{
-                    name: 'RequestVerification',
-                    params: { documentId: id, schemaId: intDoc.schemaId },
-                  }"
-                  :disabled="docModified()"
-                >
-                  <v-icon color="grey">$vuetify.icons.next</v-icon>
-                </v-btn>
-              </v-list-item-action>
-            </template>
-            <span
-              >Document modified, please save before start verification</span
-            >
-          </v-tooltip>
-        </v-list-item>
-
-        <v-divider></v-divider>
+          <v-list-item :disabled="docModified()">
+            <v-tooltip right v-model="showTooltip">
+              <template v-slot:activator="{ attrs }">
+                <v-list-item-content>
+                  <v-list-item-title>{{
+                    $t("view.document.verification")
+                  }}</v-list-item-title>
+                  <v-list-item-subtitle>{{
+                    $t("view.document.verificationSubtitle")
+                  }}</v-list-item-subtitle>
+                </v-list-item-content>
+                <v-list-item-action>
+                  <v-btn
+                    v-bind="attrs"
+                    icon
+                    :to="{
+                      name: 'RequestVerification',
+                      params: { documentId: id, schemaId: intDoc.schemaId },
+                    }"
+                    :disabled="docModified()"
+                  >
+                    <v-icon color="grey">$vuetify.icons.next</v-icon>
+                  </v-btn>
+                </v-list-item-action>
+              </template>
+              <span>{{ $t("view.document.modified") }}</span>
+            </v-tooltip>
+          </v-list-item>
+          <v-divider></v-divider>
+        </div>
       </v-card-text>
 
       <v-card-actions>
-        <v-layout align-end justify-end>
-          <v-bpa-button color="secondary" @click="cancel()"
-            >Cancel</v-bpa-button
-          >
+        <v-layout align-center align-end justify-end>
+          <v-switch
+            v-if="expertMode && enableV2Switch"
+            v-model="useV2Exchange"
+            :label="$t('button.useV2')"
+          ></v-switch>
+          <v-bpa-button color="secondary" @click="cancel()">{{
+            $t("button.cancel")
+          }}</v-bpa-button>
           <v-bpa-button
             :loading="this.isBusy"
             color="primary"
             @click="saveDocument(false || isProfile(intDoc.type))"
-            >Save</v-bpa-button
+            >{{ getCreateButtonLabel }}</v-bpa-button
           >
           <v-bpa-button
             v-show="this.id && !isProfile(intDoc.type)"
             :loading="this.isBusy"
             color="primary"
             @click="saveDocument(true && !isProfile(intDoc.type))"
-            >Save & Close</v-bpa-button
+            >{{ $t("button.saveAndClose") }}</v-bpa-button
           >
         </v-layout>
       </v-card-actions>
@@ -125,7 +125,7 @@
         <v-expansion-panel>
           <v-expansion-panel-header
             class="grey--text text--darken-2 font-weight-medium bg-light"
-            >Show raw data</v-expansion-panel-header
+            >{{ $t("showRawData") }}</v-expansion-panel-header
           >
           <v-expansion-panel-content class="bg-light">
             <vue-json-pretty :data="document"></vue-json-pretty>
@@ -137,8 +137,8 @@
 </template>
 
 <script>
-import { EventBus } from "../main";
-import { CredentialTypes } from "../constants";
+import { EventBus } from "@/main";
+import { CredentialTypes } from "@/constants";
 import OrganizationalProfile from "@/components/OrganizationalProfile";
 import Credential from "@/components/Credential";
 import VBpaButton from "@/components/BpaButton";
@@ -158,15 +158,27 @@ export default {
       type: String,
       required: false,
     },
+    disableVerificationRequest: {
+      type: Boolean,
+      required: false,
+      default: false,
+    },
+    enableV2Switch: {
+      type: Boolean,
+      required: false,
+      default: false,
+    },
+    createButtonLabel: {
+      type: String,
+      default: undefined,
+    },
   },
   created() {
-    if (this.id) {
-      EventBus.$emit("title", "Edit Document");
+    if (this.id && !this.type) {
+      EventBus.$emit("title", this.$t("view.document.titleExisting"));
       this.getDocument();
-    } else if (!this.type) {
-      this.$router.push({ name: "Wallet" });
     } else {
-      EventBus.$emit("title", "Create new Document");
+      EventBus.$emit("title", this.$t("view.document.titleNew"));
       this.document.type = this.type;
       this.document.schemaId = this.schemaId;
       this.document.isPublic = this.isProfile(this.document.type);
@@ -180,6 +192,7 @@ export default {
       intDoc: {},
       isBusy: false,
       isReady: false,
+      useV2Exchange: false,
       CredentialTypes,
       docChanged: false,
       credChanged: false,
@@ -199,6 +212,11 @@ export default {
         return null;
       }
     },
+    getCreateButtonLabel() {
+      return this.createButtonLabel
+        ? this.createButtonLabel
+        : this.$t("button.save");
+    },
   },
   watch: {},
   methods: {
@@ -210,7 +228,12 @@ export default {
             this.document = result.data;
             this.intDoc = { ...this.document };
             this.isReady = true;
-            EventBus.$emit("title", "Edit (" + this.document.typeLabel + ")");
+            EventBus.$emit(
+              "title",
+              `${this.$t("view.document.titleEdit")} (${
+                this.document.typeLabel
+              })`
+            );
           }
         })
         .catch((e) => {
@@ -234,13 +257,14 @@ export default {
             console.log(res);
             this.isBusy = false;
             if (closeDocument) {
-              this.$router.push({
-                name: "Wallet",
-              });
+              this.$router.go(-1);
             } else {
               this.$router.go(this.$router.currentRoute);
             }
-            EventBus.$emit("success", "Success");
+            EventBus.$emit(
+              "success",
+              this.$t("view.document.eventSuccessSaveEdit")
+            );
           })
           .catch((e) => {
             this.isBusy = false;
@@ -260,11 +284,16 @@ export default {
           .post(`${this.$apiBaseUrl}/wallet/document`, docForSave)
           .then((res) => {
             console.log(res);
-            this.isBusy = false;
-            this.$router.push({
-              name: "Wallet",
+            this.$emit("received-document-id", {
+              documentId: res.data.id,
+              useV2Exchange: this.useV2Exchange,
             });
-            EventBus.$emit("success", "Success");
+            this.isBusy = false;
+            this.$router.go(-1);
+            EventBus.$emit(
+              "success",
+              this.$t("view.document.eventSuccessSaveNew")
+            );
           })
           .catch((e) => {
             this.isBusy = false;
@@ -277,10 +306,11 @@ export default {
         .delete(`${this.$apiBaseUrl}/wallet/document/${this.id}`)
         .then((result) => {
           if (result.status === 200) {
-            EventBus.$emit("success", "Document deleted");
-            this.$router.push({
-              name: "Wallet",
-            });
+            EventBus.$emit(
+              "success",
+              this.$t("view.document.eventSuccessDelete")
+            );
+            this.$router.go(-1);
           }
         })
         .catch((e) => {
@@ -288,20 +318,15 @@ export default {
         });
     },
     cancel() {
-      this.$router.push({
-        name: "Wallet",
-      });
+      this.$router.go(-1);
     },
     isProfile(schemaType) {
       return !this.schemaId && schemaType === CredentialTypes.PROFILE.type;
     },
     fieldModified() {
-      const isModified = Object.keys(this.intDoc).find((key) => {
-        return this.document[key] != this.intDoc[key];
-      })
-        ? true
-        : false;
-      this.docChanged = isModified;
+      this.docChanged = !!Object.keys(this.intDoc).find((key) => {
+        return this.document[key] !== this.intDoc[key];
+      });
       this.docModified();
     },
     documentDataFieldChanged(credChanged) {

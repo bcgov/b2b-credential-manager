@@ -1,6 +1,16 @@
+/*
+ * Copyright (c) 2020-2021 - for information on the respective copyright owner
+ * see the NOTICE file and/or the repository at
+ * https://github.com/hyperledger-labs/business-partner-agent
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 // style.scss imports our font awesome styles and material design styles
 import Vue from "vue";
 import Vuetify from "vuetify";
+import en from "vuetify/lib/locale/en";
+import de from "vuetify/lib/locale/de";
+import pl from "vuetify/lib/locale/pl";
 
 import {
   mdiViewDashboard,
@@ -37,9 +47,8 @@ import {
   mdiBookRemove,
   mdiMagnify,
   mdiTicketConfirmationOutline,
-  mdiAlertCircle,
   mdiAlert,
-  mdiAttachment
+  mdiAttachment,
 } from "@mdi/js";
 
 Vue.use(Vuetify);
@@ -95,9 +104,15 @@ export default new Vuetify({
       search: mdiMagnify,
       dashboardGo: "fas fa-arrow-alt-circle-right",
       invitation: mdiTicketConfirmationOutline,
-      validationWarning: mdiAlertCircle,
       validationError: mdiAlert,
       attachment: mdiAttachment,
+    },
+  },
+  lang: {
+    locales: {
+      en,
+      de,
+      pl,
     },
   },
   theme: {
@@ -125,7 +140,7 @@ export default new Vuetify({
         font: "#313132",
         anchor: "#1A5A96",
         anchorHover: "#3B99FC",
-        icons: "#000000"
+        icons: "#000000",
       },
     },
   },

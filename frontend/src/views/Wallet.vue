@@ -1,7 +1,7 @@
 <!--
- Copyright (c) 2020 - for information on the respective copyright owner
+ Copyright (c) 2020-2021 - for information on the respective copyright owner
  see the NOTICE file and/or the repository at
- https://github.com/hyperledger-labs/organizational-agent
+ https://github.com/hyperledger-labs/business-partner-agent
 
  SPDX-License-Identifier: Apache-2.0
 -->
@@ -42,13 +42,20 @@
               <v-icon>$vuetify.icons.add</v-icon>
             </v-btn>
           </template>
-          <v-list>
+          <v-list max-height="50vh" class="overflow-y-auto">
             <v-list-item
-              v-for="(type, i) in newDocumentTypes"
-              :key="i"
-              @click="createDocument(type)"
+              v-for="(schema, idx) in newDocumentTypes"
+              :key="idx"
+              @click="createDocument(schema)"
             >
-              <v-list-item-title>{{ type.label }}</v-list-item-title>
+              <v-list-item-content>
+                <v-list-item-title>
+                  {{ schema.label }}
+                </v-list-item-title>
+                <v-list-item-subtitle>
+                  {{ schema.schemaId }}
+                </v-list-item-subtitle>
+              </v-list-item-content>
             </v-list-item>
           </v-list>
         </v-menu>
@@ -58,13 +65,9 @@
 </template>
 
 <script>
-import { CredentialTypes } from "../constants";
+import { CredentialTypes } from "@/constants";
 import MyCredentialList from "@/components/MyCredentialList";
-import { EventBus } from "../main";
-import {
-  credHeaders,
-  docHeaders,
-} from "@/components/tableHeaders/WalletHeaders";
+import { EventBus } from "@/main";
 
 export default {
   name: "Wallet",
@@ -79,9 +82,6 @@ export default {
   data: () => {
     return {
       search: "",
-      scheams: [],
-      credHeaders: credHeaders,
-      docHeaders: docHeaders,
     };
   },
   methods: {
@@ -100,6 +100,58 @@ export default {
     },
   },
   computed: {
+    credHeaders() {
+      return [
+        {
+          text: this.$t("view.wallet.credentials.headers.label"),
+          value: "label",
+        },
+        {
+          text: this.$t("view.wallet.credentials.headers.type"),
+          value: "type",
+        },
+        {
+          text: this.$t("view.wallet.credentials.headers.issuer"),
+          value: "issuer",
+        },
+        {
+          text: this.$t("view.wallet.credentials.headers.issuedAt"),
+          value: "issuedAt",
+        },
+        {
+          text: this.$t("view.wallet.credentials.headers.revoked"),
+          value: "revoked",
+        },
+        {
+          text: this.$t("view.wallet.credentials.headers.isPublic"),
+          value: "isPublic",
+        },
+      ];
+    },
+    docHeaders() {
+      return [
+        {
+          text: this.$t("view.wallet.documents.headers.label"),
+          value: "label",
+        },
+        {
+          text: this.$t("view.wallet.documents.headers.type"),
+          value: "type",
+        },
+        {
+          text: this.$t("view.wallet.documents.headers.createdDate"),
+          value: "createdDate",
+        },
+        {
+          text: this.$t("view.wallet.documents.headers.updatedDate"),
+          value: "updatedDate",
+        },
+        {
+          text: this.$t("view.wallet.documents.headers.isPublic"),
+          value: "isPublic",
+        },
+      ];
+    },
     newDocumentTypes() {
       let docTypes = this.$store.getters.getSchemas;
       if (this.$store.getters.getOrganizationalProfile) {

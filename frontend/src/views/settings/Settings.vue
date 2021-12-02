@@ -1,14 +1,28 @@
 <!--
- Copyright (c) 2020 - for information on the respective copyright owner
+ Copyright (c) 2020-2021 - for information on the respective copyright owner
  see the NOTICE file and/or the repository at
- https://github.com/hyperledger-labs/organizational-agent
+ https://github.com/hyperledger-labs/business-partner-agent
 
  SPDX-License-Identifier: Apache-2.0
 -->
 <template>
   <v-container justify-center>
     <v-card class="my-4 mx-auto">
-      <v-card-title class="bg-light">Settings</v-card-title>
+      <v-card-title class="bg-light">{{
+        $t("view.settings.title")
+      }}</v-card-title>
+      <v-list-item v-if="!isLoading">
+        <v-list-item-title class="grey--text text--darken-2 font-weight-medium">
+          {{ $t("view.settings.language") }}
+        </v-list-item-title>
+        <v-select
+          v-model="selectedLocale"
+          :items="availableLocales"
+          item-text="label"
+          item-value="locale"
+          @change="changeLanguage($event)"
+        ></v-select>
+      </v-list-item>
       <v-list-item v-if="!isLoading">
         <v-list-item-title class="grey--text text--darken-2 font-weight-medium">
           {{ $t("view.settings.walletDID") }}
@@ -37,7 +51,7 @@
         <v-list-item-content>
           <v-list-item-title
             class="grey--text text--darken-2 font-weight-medium"
-            >Tags</v-list-item-title
+            >{{ $t("view.settings.tags") }}</v-list-item-title
           >
         </v-list-item-content>
         <v-list-item-action>
@@ -48,14 +62,14 @@
       </v-list-item>
       <v-list-item>
         <v-list-item-title class="grey--text text--darken-2 font-weight-medium">
-          Frontend Color
+          {{ $t("view.settings.frontendColor") }}
         </v-list-item-title>
         <v-list-item-subtitle align="end">
           <text-field-color-picker
-              id="uiColor"
-              v-if="isEditingColor"
-              @on-save="onPickColor"
-              @on-cancel="isEditingColor = false"
+            id="uiColor"
+            v-if="isEditingColor"
+            @on-save="onPickColor"
+            @on-cancel="isEditingColor = false"
           >
           </text-field-color-picker>
           <span v-else>{{ $vuetify.theme.themes.light.primary }}</span>
@@ -68,21 +82,25 @@
       </v-list-item>
       <v-list-item>
         <v-list-item-title class="grey--text text--darken-2 font-weight-medium">
-          Icons Color
+          {{ $t("view.settings.iconsColor") }}
         </v-list-item-title>
         <v-list-item-subtitle align="end">
           <text-field-color-picker
-              id="uiColorIcons"
-              :base-color="$vuetify.theme.themes.light.icons"
-              v-if="isEditingColorIcons"
-              @on-save="onPickColorIcons"
-              @on-cancel="isEditingColorIcons = false"
+            id="uiColorIcons"
+            :base-color="$vuetify.theme.themes.light.icons"
+            v-if="isEditingColorIcons"
+            @on-save="onPickColorIcons"
+            @on-cancel="isEditingColorIcons = false"
           >
           </text-field-color-picker>
           <span v-else>{{ $vuetify.theme.themes.light.icons }}</span>
         </v-list-item-subtitle>
         <v-list-item-action v-show="!isEditingColorIcons">
-          <v-btn icon x-small @click="isEditingColorIcons = !isEditingColorIcons">
+          <v-btn
+            icon
+            x-small
+            @click="isEditingColorIcons = !isEditingColorIcons"
+          >
             <v-icon dark>$vuetify.icons.pencil</v-icon>
           </v-btn>
         </v-list-item-action>
@@ -103,14 +121,12 @@
         v-for="setting in settings"
         :key="setting.text"
       >
-        <!-- <v-list-item-content> -->
         <v-list-item-title class="grey--text text--darken-2 font-weight-medium">
           {{ setting.text }}
         </v-list-item-title>
         <v-list-item-subtitle align="end">
           {{ setting.value }}
         </v-list-item-subtitle>
-        <!-- </v-list-item-content> -->
       </v-list-item>
     </v-card>
   </v-container>
@@ -119,43 +135,85 @@
 <script>
 import { EventBus } from "@/main";
 import TextFieldColorPicker from "@/components/helper/TextFieldColorPicker";
+import i18n from "@/plugins/i18n";
 
 export default {
   name: "Settings",
   created() {
-    EventBus.$emit("title", "Settings");
+    EventBus.$emit("title", this.$t("view.settings.title"));
     this.getStatus();
   },
   data: () => {
     return {
       isLoading: true,
-      settingsHeader: [
-        {
-          text: "BPA Name",
-          value: "agentName",
-        },
-        {
-          text: "Host",
-          value: "host",
-        },
-        {
-          text: "Universal Resolver",
-          value: "uniResolverUrl",
-        },
-        {
-          text: "Ledger Browser",
-          value: "ledgerBrowser",
-        },
-        {
-          text: "Ledger DID Prefix",
-          value: "ledgerPrefix",
-        },
-      ],
+      selectedLocale: {
+        locale: i18n.locale,
+      },
       isEditingColor: false,
       isEditingColorIcons: false,
     };
   },
   computed: {
+    settingsHeader() {
+      return [
+        {
+          text: this.$t("view.settings.header.agentName"),
+          value: "agentName",
+        },
+        {
+          text: this.$t("view.settings.header.host"),
+          value: "host",
+        },
+        {
+          text: this.$t("view.settings.header.uniResolverUrl"),
+          value: "uniResolverUrl",
+        },
+        {
+          text: this.$t("view.settings.header.ledgerBrowser"),
+          value: "ledgerBrowser",
+        },
+        {
+          text: this.$t("view.settings.header.ledgerPrefix"),
+          value: "ledgerPrefix",
+        },
+        {
+          text: this.$t("view.settings.header.uptime"),
+          value: "uptime",
+        },
+        {
+          text: this.$t("view.settings.header.buildVersion"),
+          value: "buildVersion",
+        },
+      ];
+    },
+    availableLocales() {
+      return i18n.availableLocales.map((availableLocale) => {
+        const { meta } = i18n.getLocaleMessage(availableLocale);
+
+        let selectLabel = availableLocale;
+        if (meta) {
+          if (meta.label !== undefined && meta.label !== "") {
+            selectLabel = meta.label;
+          } else if (
+            meta.langNameNative !== undefined &&
+            meta.langNameNative !== ""
+          ) {
+            selectLabel = meta.langNameNative;
+            if (
+              meta.langNameEnglish !== undefined &&
+              meta.langNameEnglish !== ""
+            ) {
+              selectLabel += ` (${meta.langNameEnglish})`;
+            }
+          }
+        }
+
+        return {
+          locale: availableLocale,
+          label: selectLabel,
+        };
+      });
+    },
     expertMode: {
       set(body) {
         this.$store.commit({
@@ -179,6 +237,12 @@ export default {
     },
   },
   methods: {
+    changeLanguage(locale) {
+      i18n.locale = locale;
+      this.$vuetify.lang.current = locale;
+      localStorage.setItem("locale", locale);
+      EventBus.$emit("title", this.$t("view.settings.title"));
+    },
     onPickColor(c) {
       this.$vuetify.theme.themes.light.primary = c;
       localStorage.setItem("uiColor", c);
@@ -218,8 +282,8 @@ export default {
         successful = false;
       }
       successful
-        ? EventBus.$emit("success", "DID copied")
-        : EventBus.$emit("error", "Can't copy DID");
+        ? EventBus.$emit("success", this.$t("view.settings.eventSuccessCopy"))
+        : EventBus.$emit("error", this.$t("view.settings.eventErrorCopy"));
       document.body.removeChild(el);
       window.getSelection().removeAllRanges();
     },

@@ -1,10 +1,10 @@
 /*
- Copyright (c) 2021 - for information on the respective copyright owner
- see the NOTICE file and/or the repository at
- https://github.com/hyperledger-labs/organizational-agent
-
- SPDX-License-Identifier: Apache-2.0
-*/
+ * Copyright (c) 2020-2021 - for information on the respective copyright owner
+ * see the NOTICE file and/or the repository at
+ * https://github.com/hyperledger-labs/business-partner-agent
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 
 import { appAxios } from "@/services/interceptors";
 import { ApiRoutes, CredentialExchangeRoles } from "@/constants";
@@ -69,12 +69,26 @@ export default {
   acceptCredentialOffer(id) {
     return appAxios().put(`${ApiRoutes.WALLET}/credential/${id}/accept-offer`);
   },
-  declineCredentialOffer(id) {
-    return appAxios().put(`${ApiRoutes.WALLET}/credential/${id}/decline-offer`);
-  },
-  declineCredentialProposal(id) {
+  async declineCredentialOffer(id, reasonMessage = undefined) {
+    const message =
+      reasonMessage === undefined || "" ? undefined : reasonMessage;
+
     return appAxios().put(
-      `${ApiRoutes.ISSUER}/exchanges/${id}/decline-proposal`
+      `${ApiRoutes.WALLET}/credential/${id}/decline-offer`,
+      {
+        message,
+      }
+    );
+  },
+  async declineCredentialProposal(id, reasonMessage = undefined) {
+    const message =
+      reasonMessage === undefined || "" ? undefined : reasonMessage;
+
+    return appAxios().put(
+      `${ApiRoutes.ISSUER}/exchanges/${id}/decline-proposal`,
+      {
+        message,
+      }
     );
   },
   sendCredentialOffer(id, counterOfferData) {
@@ -82,5 +96,8 @@ export default {
       `${ApiRoutes.ISSUER}/exchanges/${id}/send-offer`,
       counterOfferData
     );
+  },
+  reIssueCredential(id) {
+    return appAxios().post(`${ApiRoutes.ISSUER}/exchanges/${id}/re-issue`);
   },
 };

@@ -1,7 +1,7 @@
 <!--
- Copyright (c) 2021 - for information on the respective copyright owner
+ Copyright (c) 2020-2021 - for information on the respective copyright owner
  see the NOTICE file and/or the repository at
- https://github.com/hyperledger-labs/organizational-agent
+ https://github.com/hyperledger-labs/business-partner-agent
 
  SPDX-License-Identifier: Apache-2.0
 -->
@@ -22,7 +22,7 @@
             id="proofTemplateName"
             v-model="proofTemplate.name"
             dense
-            label="Name"
+            :label="$t('view.proofTemplate.create.labelName')"
             :rules="[rules.required]"
           ></v-text-field>
         </v-list-item>
@@ -68,16 +68,18 @@
                           .length === 0
                       "
                       right
-                      color="warning"
-                      >$vuetify.icons.validationWarning</v-icon
+                      color="info"
+                      >$vuetify.icons.about</v-icon
                     >
                   </div>
                 </v-expansion-panel-header>
                 <v-expansion-panel-content>
-                  <AttributeEdit :attribute-group="attributeGroup" />
+                  <AttributeEdit v-model="proofTemplate.attributeGroups[idx]" />
 
                   <!-- Schema Restrictions -->
-                  <RestrictionsEdit :attribute-group="attributeGroup" />
+                  <RestrictionsEdit
+                    v-model="proofTemplate.attributeGroups[idx]"
+                  />
 
                   <v-card-actions>
                     <v-bpa-button
@@ -141,7 +143,12 @@
 
       <!-- Proof Templates Actions -->
       <v-card-actions>
-        <v-layout align-end justify-end>
+        <v-layout align-center align-end justify-end>
+          <v-switch
+            v-if="expertMode && enableV2Switch"
+            v-model="useV2Exchange"
+            :label="$t('button.useV2')"
+          ></v-switch>
           <v-bpa-button color="secondary" @click="$router.go(-1)">
             {{ $t("button.cancel") }}
           </v-bpa-button>
@@ -151,7 +158,7 @@
             color="primary"
             @click="createProofTemplate"
           >
-            {{ $t("button.create") }}
+            {{ getCreateButtonLabel }}
           </v-bpa-button>
         </v-layout>
       </v-card-actions>
@@ -183,6 +190,15 @@ export default {
       type: Boolean,
       default: false,
     },
+    createButtonLabel: {
+      type: String,
+      default: undefined,
+    },
+    enableV2Switch: {
+      type: Boolean,
+      required: false,
+      default: false,
+    },
   },
   components: { RestrictionsEdit, AttributeEdit, VBpaButton },
   created() {
@@ -192,6 +208,7 @@ export default {
     return {
       openAttributeGroupPanels: [],
       createButtonIsBusy: false,
+      useV2Exchange: false,
       proofTemplate: {
         name: "",
         attributeGroups: [],
@@ -204,6 +221,14 @@ export default {
     };
   },
   computed: {
+    expertMode() {
+      return this.$store.state.expertMode;
+    },
+    getCreateButtonLabel() {
+      return this.createButtonLabel
+        ? this.createButtonLabel
+        : this.$t("button.create");
+    },
     rules() {
       return {
         required: (value) => !!value || this.$t("app.rules.required"),
@@ -379,7 +404,10 @@ export default {
       proofTemplateService
         .createProofTemplate(proofTemplate)
         .then((res) => {
-          this.$emit("received-proof-template-id", res.data.id);
+          this.$emit("received-proof-template-id", {
+            documentId: res.data.id,
+            useV2Exchange: this.useV2Exchange,
+          });
           EventBus.$emit(
             "success",
             this.$t("view.proofTemplate.create.success")

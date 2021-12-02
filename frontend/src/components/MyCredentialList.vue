@@ -1,19 +1,27 @@
 <!--
- Copyright (c) 2020 - for information on the respective copyright owner
+ Copyright (c) 2020-2021 - for information on the respective copyright owner
  see the NOTICE file and/or the repository at
- https://github.com/hyperledger-labs/organizational-agent
+ https://github.com/hyperledger-labs/business-partner-agent
 
  SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
   <v-container>
+    <v-text-field
+      v-model="search"
+      append-icon="$vuetify.icons.search"
+      :label="$t('app.search')"
+      single-line
+      hide-details
+    ></v-text-field>
     <v-data-table
       :hide-default-footer="data.length < 10"
       :loading="isBusy"
-      v-model="selected"
+      v-model="inputValue"
       :headers="headers"
       :items="data"
+      :search="search"
       :show-select="selectable"
       single-select
       :sort-by="['createdDate']"
@@ -87,19 +95,28 @@
 </template>
 
 <script>
-import { CredentialTypes } from "../constants";
-import { EventBus } from "../main";
+import { CredentialTypes } from "@/constants";
+import { EventBus } from "@/main";
 import NewMessageIcon from "@/components/NewMessageIcon";
 
 export default {
   props: {
     type: String,
     headers: Array,
+    disableVerificationRequest: {
+      type: Boolean,
+      required: false,
+      default: false,
+    },
     selectable: {
       type: Boolean,
       default: false,
     },
     indicateNew: {
+      type: Boolean,
+      default: false,
+    },
+    useIndy: {
       type: Boolean,
       default: false,
     },
@@ -113,14 +130,22 @@ export default {
   data: () => {
     return {
       data: [],
+      search: "",
       isBusy: true,
-      selected: [],
       CredentialTypes: CredentialTypes,
     };
   },
   computed: {
     credentialNotifications() {
       return this.$store.getters.credentialNotifications;
+    },
+    inputValue: {
+      get() {
+        return this.value;
+      },
+      set(val) {
+        this.$emit("input", val);
+      },
     },
   },
   watch: {
@@ -134,7 +159,11 @@ export default {
   methods: {
     fetch(type) {
       this.$axios
-        .get(`${this.$apiBaseUrl}/wallet/${type}`)
+        .get(
+          `${this.$apiBaseUrl}/wallet/${type}${
+            this.useIndy ? "?types=INDY" : ""
+          }`
+        )
         .then((result) => {
           if ({}.hasOwnProperty.call(result, "data")) {
             this.isBusy = false;
@@ -164,6 +193,7 @@ export default {
           name: "Document",
           params: {
             id: doc.id,
+            disableVerificationRequest: this.disableVerificationRequest,
             // type: doc.type,
           },
         });
